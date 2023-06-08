@@ -1,0 +1,35 @@
+# Ignore build artifacts
+build/
+bin/
+*.exe
+*.out
+*.o
+
+# Ignore generated files
+*.sdf
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.user
+*.opensdf
+
+# Ignore dependency directories
+lib/
+vendor/
+
+# Ignore IDE-specific files and directories
+.vs/
+.idea/
+*.suo
+*.userprefs
+
+# Ignore temporary files
+*.tmp
+*.log
+*.bak
+
+# Ignore generated documentation
+docs/
+
+# Ignore any other project-specific files or directories
+
