@@ -9,7 +9,9 @@ using namespace std;
 enum class GameState {
     Menu,
     Play,
-    Pause
+    Pause,
+    Win,
+    Restart
 };
 
 int main()
@@ -25,8 +27,13 @@ int main()
     class Entity {
     public:
         Vector2 pos = Vector2();
+        Vector2 originalPos = Vector2(); //The original location that this entity spawned at (used for respawn)
         virtual void Draw() = 0;
         virtual void Update(float dt) = 0;
+        virtual void Respawn()
+        {
+            pos = originalPos;
+        }
 
         virtual ~Entity() {}
     };
@@ -38,11 +45,13 @@ int main()
     {
     private:
         int paddleSpeed = 100;
-        int playerNum;
     public:
+        int playerNum;
         int height = 100;
         int width = 10;
         Rectangle CollisionBounds;
+        int score = 0;
+
         void Update(float dt) override
         {
             Move(dt);
@@ -77,6 +86,18 @@ int main()
                 height,
                 WHITE
             );
+
+
+            //Draw hud values
+            string scoreText = to_string(score);
+
+            int scoreWidth = MeasureText(scoreText.c_str(), 30);
+            Vector2 scorePos = { 10 + scoreWidth, 10 };
+
+            if (playerNum == 2)
+                scorePos = {(float)GetScreenWidth() - 10 - scoreWidth, 10};
+
+            DrawText(scoreText.c_str(), scorePos.x, scorePos.y, 30, WHITE);
         }
 
         Paddle(Vector2 _paddlePos, int _player)
@@ -84,9 +105,9 @@ int main()
             pos = _paddlePos;
             playerNum = _player;
             CollisionBounds = {pos.x, pos.y, (float)width, (float)height};
+            originalPos = _paddlePos;
         }
     };
-
 
     class Ball : public Entity {
 
@@ -141,6 +162,7 @@ int main()
         Ball(Vector2 _ballPos, int _ballRadius)
         {
             pos = _ballPos;
+            originalPos = _ballPos;
             ballRadius = _ballRadius;
         }
     };
@@ -175,7 +197,10 @@ int main()
     entities.push_back(p1);
     entities.push_back(p2);
 
+    //Toggle between different states
     GameState gameState = GameState::Menu;
+
+    int playerWon = 0; //Which player won state
 
     while (!WindowShouldClose())
     {
@@ -188,6 +213,11 @@ int main()
         string pauseText = "Press Start to Resume";
         int pauseTextWidth = MeasureText(startText.c_str(), 30) / 2;
 
+        string wonText = "PLAYER " + to_string(playerWon) + " WON!";
+        int wonTextWidth = MeasureText(wonText.c_str(), 30) / 2;
+        string retartText = "Press Start to Restart";
+        int restartTextWidth = MeasureText(retartText.c_str(), 30) / 2;
+
         BeginDrawing();
             ClearBackground(BLACK);
 
@@ -196,11 +226,12 @@ int main()
             case GameState::Menu:
                 DrawText(startText.c_str(), (GetScreenWidth() / 2) - startTextWidth, GetScreenHeight() / 2, 30, WHITE);
                 if (IsKeyDown(KEY_ENTER) || IsKeyDown(GAMEPAD_BUTTON_MIDDLE_RIGHT))
-                {
                     gameState = GameState::Play;
-                }
+                
                 break;
             case GameState::Play: //Draw gameplay
+
+                //Game logic
                 for (const auto& ent : entities)
                 {
                     ent->Update(dt);
@@ -210,8 +241,47 @@ int main()
                     if (auto ball = dynamic_cast<Ball*>(ent))
                     {
                         ball->CheckCollision(entities);
+
+                        //Ball hit left
+                        if (ball->pos.x <= 0)
+                        {
+                            printf("POINT TO PLAYER 2!/n"); //TODO Refactor all these loops...
+                            for (const auto& ent : entities)
+                                if (auto player = dynamic_cast<Paddle*>(ent))
+                                    if (player->playerNum == 2)
+                                        player->score++;
+
+                            for (const auto& ent : entities) //Respawn all entities
+                            {
+                                ent->Respawn();
+                                continue;
+                            }
+                        }
+                        //Ball hit right
+                        else if (ball->pos.x >= GetScreenWidth())
+                        {
+                            printf("POINT TO PLAYER 1!/n"); //TODO Refactor all these loops...
+                            for (const auto& ent : entities)
+                                if (auto player = dynamic_cast<Paddle*>(ent))
+                                    if (player->playerNum == 1)
+                                        player->score++;
+
+                            for (const auto& ent : entities) //Respawn all entities
+                            {
+                                ent->Respawn();
+                                continue;
+                            }
+                        }
                     }
                 }
+
+                for (const auto& ent : entities)
+                    if (auto player = dynamic_cast<Paddle*>(ent))
+                        if (player->score > 1)
+                        {
+                            playerWon = player->playerNum;
+                            gameState = GameState::Win;
+                        }
 
                 //Show pause screen
                 if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(GAMEPAD_BUTTON_MIDDLE_RIGHT))
@@ -227,6 +297,25 @@ int main()
                 {
                     gameState = GameState::Play;
                 }
+                break;
+            case GameState::Win:
+                DrawText(wonText.c_str(), (GetScreenWidth() / 2) - wonTextWidth, GetScreenHeight() / 2, 30, WHITE);
+                DrawText(retartText.c_str(), (GetScreenWidth() / 2) - restartTextWidth, GetScreenHeight() / 2+40, 30, WHITE);
+                if (IsKeyDown(KEY_ENTER) || IsKeyDown(GAMEPAD_BUTTON_MIDDLE_RIGHT))
+                    gameState = GameState::Restart;
+                break;
+            case GameState::Restart:
+                for (const auto& ent : entities)
+                {
+                    if (auto player = dynamic_cast<Paddle*>(ent))
+                        player->score = 0;
+
+                    playerWon = 0;
+
+                    ent->Respawn();
+                }
+
+                gameState = GameState::Play;
                 break;
             default:
                 break;
