@@ -207,6 +207,7 @@ int main()
 
         float dt = GetFrameTime();
 
+        //I would have made a helper function for this so I can just render stuff, but I'll do that later
         string startText = "Press Start to Begin Play";
         int startTextWidth = MeasureText(startText.c_str(), 30) /2;
 
@@ -215,6 +216,7 @@ int main()
 
         string wonText = "PLAYER " + to_string(playerWon) + " WON!";
         int wonTextWidth = MeasureText(wonText.c_str(), 30) / 2;
+
         string retartText = "Press Start to Restart";
         int restartTextWidth = MeasureText(retartText.c_str(), 30) / 2;
 
@@ -242,10 +244,10 @@ int main()
                     {
                         ball->CheckCollision(entities);
 
-                        //Ball hit left
+                        //Ball hit left, give point to player and respawn to original positions.
                         if (ball->pos.x <= 0)
                         {
-                            printf("POINT TO PLAYER 2!/n"); //TODO Refactor all these loops...
+                            printf("POINT TO PLAYER 2!\n"); //TODO Refactor all these loops...
                             for (const auto& ent : entities)
                                 if (auto player = dynamic_cast<Paddle*>(ent))
                                     if (player->playerNum == 2)
@@ -257,10 +259,10 @@ int main()
                                 continue;
                             }
                         }
-                        //Ball hit right
+                        //Ball hit right, do the same but.. y'know
                         else if (ball->pos.x >= GetScreenWidth())
                         {
-                            printf("POINT TO PLAYER 1!/n"); //TODO Refactor all these loops...
+                            printf("POINT TO PLAYERPOINT TO PLAYER 1!\n"); //TODO Refactor all these loops...
                             for (const auto& ent : entities)
                                 if (auto player = dynamic_cast<Paddle*>(ent))
                                     if (player->playerNum == 1)
@@ -305,16 +307,18 @@ int main()
                     gameState = GameState::Restart;
                 break;
             case GameState::Restart:
-                for (const auto& ent : entities)
+                for (const auto& ent : entities) //Loop through and reset all of the Paddle (player) classes back to 0 for score
                 {
                     if (auto player = dynamic_cast<Paddle*>(ent))
                         player->score = 0;
 
-                    playerWon = 0;
 
                     ent->Respawn();
                 }
+                //Reset which player won the game
+                playerWon = 0;
 
+                //Go back to play state.
                 gameState = GameState::Play;
                 break;
             default:
@@ -322,11 +326,6 @@ int main()
             }
             
         EndDrawing();
-    }
-
-    for (const auto& ent : entities)
-    {
-        delete ent;
     }
 
     CloseWindow();
